@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CircuitCypher</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f4f4;
+            padding: 20px;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        #components {
+            margin-bottom: 15px;
+        }
+
+        .component {
+            display: inline-block;
+            margin: 5px;
+            padding: 8px 12px;
+            border: 1px solid #aaa;
+            background: #fff;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .component:hover {
+            background: #e0e0ff;
+        }
+
+        #canvas {
+            border: 2px solid #333;
+            background-color: white;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Circuit Designer</h1>
+    
+    <div id="components">
+        <div class="component" onclick="addComponent('battery')">Battery</div>
+        <div class="component" onclick="addComponent('resistor')">Resistor</div>
+        <div class="component" onclick="addComponent('led')">LED</div>
+        <div class="component" onclick="setWireMode()">Wire</div>
+    </div>
+    
+    <canvas id="canvas" width="800" height="500"></canvas>
+    
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let components = [];
+        let selectedComponent = null;
+        let isDrawingWire = false;
+        let wireMode = false;
+        let wireStart = null;
+
+        let mouseX = 0, mouseY = 0;
+
+        // Add a component to the board
+        function addComponent(type) {
+            wireMode = false; // disable wire mode when adding components
+
+            components.push({
+                type,
+                x: 100,
+                y: 100,
+                width: 60,
+                height: 50,
+                connections: []
+            });
+
+            drawCircuit();
+        }
+
+        function setWireMode() {
+            wireMode = true;
+            selectedComponent = null;
+        }
+        
+        function drawCircuit() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw components
+            components.forEach(comp => {
+                ctx.beginPath();
+                ctx.strokeStyle = "black";
+
+                switch (comp.type) {
+
+                    case 'battery':
+                        ctx.strokeRect(comp.x, comp.y, 40, 60);
+                        ctx.fillText('+', comp.x + 15, comp.y + 20);
+                        ctx.fillText('-', comp.x + 15, comp.y + 50);
+                        break;
+
+                    case 'resistor':
+                        ctx.strokeRect(comp.x, comp.y, 60, 20);
+                        break;
+
+                    case 'led':
+                        ctx.moveTo(comp.x, comp.y);
+                        ctx.lineTo(comp.x + 30, comp.y);
+                        ctx.arc(comp.x + 40, comp.y, 6, 0, Math.PI * 2);
+                        break;
+                }
+
+                ctx.stroke();
+            });
+
+            // Draw connections
+            components.forEach((comp, index) => {
+                comp.connections.forEach(connIndex => {
+                    const target = components[connIndex];
+                    if (!target) return;
+
+                    ctx.beginPath();
+                    ctx.moveTo(comp.x + comp.width / 2, comp.y + comp.height / 2);
+                    ctx.lineTo(target.x + target.width / 2, target.y + target.height / 2);
+                    ctx.stroke();
+                });
+            });
+
+            // Currently drawing wire
+            if (isDrawingWire && wireStart) {
+                ctx.beginPath();
+                ctx.moveTo(wireStart.x, wireStart.y);
+                ctx.lineTo(mouseX, mouseY);
+                ctx.stroke();
+            }
+        }
+
+        // Track mouse position
+        canvas.addEventListener('mousemove', e => {
+            mouseX = e.offsetX;
+            mouseY = e.offsetY;
+
+            // Drag the selected component
+            if (selectedComponent && !wireMode) {
+                selectedComponent.x = mouseX - selectedComponent.width / 2;
+                selectedComponent.y = mouseY - selectedComponent.height / 2;
+                drawCircuit();
+            }
+        });
+
+        canvas.addEventListener('mousedown', e => {
+            const x = e.offsetX;
+            const y = e.offsetY;
+
+            // Check if clicking on a component
+            for (let comp of components) {
+                if (
+                    x > comp.x && x < comp.x + comp.width &&
+                    y > comp.y && y < comp.y + comp.height
+                ) {
+                    if (!wireMode) {
+                        selectedComponent = comp;
+                        return;
+                    }
+                }
+            }
+
+            // Wire mode
+            if (wireMode) {
+                isDrawingWire = true;
+                wireStart = { x, y };
+            }
+        });
+
+        canvas.addEventListener('mouseup', e => {
+            // Stop dragging
+            selectedComponent = null;
+
+            // Finish wire
+            if (wireMode && isDrawingWire) {
+                isDrawingWire = false;
+                wireStart = null;
+                drawCircuit();
+            }
+        });
+
+    </script>
+</body>
+</html>
